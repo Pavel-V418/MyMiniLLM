@@ -4,3 +4,12 @@ datasets>=3.0        # скачивание корпуса с Hugging Face
 tiktoken>=0.8        # токенизаторы GPT для сравнения
 tokenizers>=0.20     # токенизатор Qwen для сравнения
 pytest>=8.0
+
+# Этап 0+: модель и обучение
+# На ноутбуке без NVIDIA ставим CPU-сборку:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+# На Kaggle torch уже установлен.
+torch>=2.3
+numpy>=1.26
+wandb>=0.17          # графики обучения (необязательно)
+matplotlib>=3.8

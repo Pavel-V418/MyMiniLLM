@@ -46,16 +46,31 @@ pytest -q
 - Слабое место нашего токенизатора: редкие символы (`₽` разбит на 3 байта) и числа. Если на этапе 5 в данных будет много сумм, стоит учить токенизатор на корпусе с транзакциями.
 - Подсчёт букв: `пересмотреть` → `пер · ес · мот · реть`. Модель видит 4 id, а не 12 букв, поэтому ей трудно посчитать «р».
 
-## Обучение на Kaggle
+## Этап 0: mini-GPT
 
-В ноутбуке Kaggle:
+GPT-2-подобная модель с нашим BPE-токенизатором.
 
-```python
-!git clone <url вашего репозитория> MyMiniLLM
-%cd MyMiniLLM
-!pip install -q -r requirements.txt
-!python scripts/prepare_corpus.py --mb 200
-!python scripts/train_tokenizer.py --vocab-size 16000 --max-mb 200
+| Файл | Что делает |
+|---|---|
+| `mini_llm/model.py` | модель: эмбеддинги, causal self-attention, MLP, блоки, генерация |
+| `mini_llm/configs.py` | пресеты `debug` (ноутбук, CPU) и `small` (Kaggle, ~17M параметров) |
+| `scripts/tokenize_corpus.py` | `data/corpus/*.txt` → `data/tokens/*.bin` (uint16, на всех ядрах) |
+| `scripts/train.py` | цикл обучения: AdamW, warmup + cosine LR, mixed precision, чекпоинты, W&B |
+| `scripts/generate.py` | генерация текста из чекпоинта |
+| `kaggle/stage0_train.ipynb` | ноутбук для Kaggle: clone → данные → обучение → генерация → график |
+| `tests/test_model.py` | формы, каузальность, weight tying, переобучение на одном батче |
+
+### Порядок работы
+
+На ноутбуке, чтобы проверить код (~1–2 минуты):
+
+```bash
+python scripts/tokenize_corpus.py
+python scripts/train.py --config debug
+python scripts/generate.py --ckpt checkpoints/debug/best.pt --prompt "Москва — это"
 ```
 
-Готовый `artifacts/tokenizer/bpe_16k.json` скачайте и положите в репозиторий: он нужен на всех следующих этапах.
+На Kaggle — полное обучение: загрузите `kaggle/stage0_train.ipynb` (File → Import Notebook), проверьте `REPO_URL`, включите GPU и Internet, Run All.
+
+Параметры пресета переопределяются из командной строки: `--max-steps 2000 --lr 6e-4 --n-layer 8`.
+Обрыв сессии: тот же запуск с `--resume` продолжит с `last.pt`.
